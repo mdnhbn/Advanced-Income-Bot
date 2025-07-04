@@ -1,1 +1,19 @@
-
+{
+    "name": "your-username/advanced-income-bot",
+    "description": "An advanced income generation bot for Telegram.",
+    "type": "project",
+    "license": "proprietary",
+    "authors": [
+        {
+            "name": "Your Name",
+            "email": "your.email@example.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Core\\": "src/Core/",
+            "Modules\\": "src/Modules/"
+        }
+    },
+    "require": {}
+}
