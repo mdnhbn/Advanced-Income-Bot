@@ -5,22 +5,21 @@ namespace Modules;
 use Core\Database;
 
 class Security {
-    public static function checkMultiAccount($user_id, $device_fingerprint = null) {
-        // Telegram user_id is unique by nature, which is the primary check.
-        // A more advanced check could involve looking for patterns from device_fingerprint
-        // or IP address, but since VPN is allowed, IP is not reliable.
-        
-        $stmt = Database::query("SELECT COUNT(*) FROM users WHERE user_id = ?", [$user_id]);
-        $count = $stmt->fetchColumn();
-        
-        // If count > 0, it's an existing user, not a multi-account.
-        // The real check should happen at registration based on more data if available.
-        // For now, relying on unique user_id is the most straightforward approach.
-        return false; // Placeholder
-    }
+    // Relying on Telegram's unique user_id is the most effective way
+    // to prevent multi-accounting on their platform. The database `users` table
+    // already has a UNIQUE constraint on `user_id`, which will prevent duplicates.
+    // The logic in `User.php` already handles new vs existing users.
     
     public static function banUser($user_id, $reason = "Violation of terms.") {
         Database::query("UPDATE users SET status = 'banned' WHERE user_id = ?", [$user_id]);
         // Send a notification to the user about the ban
+        $text = sprintf(Language::get('you_are_banned_reason'), $reason);
+        // Use a generic sender function since this is a static method
+        self::sendMessageToUser($user_id, $text);
+    }
+    
+    private static function sendMessageToUser($chat_id, $text) {
+        $params = ['chat_id' => $chat_id, 'text' => $text, 'parse_mode' => 'HTML'];
+        file_get_contents(API_URL . 'sendMessage?' . http_build_query($params));
     }
 }
