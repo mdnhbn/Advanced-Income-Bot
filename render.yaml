@@ -1,0 +1,54 @@
+services:
+  # Web Service for the Telegram Bot
+  - type: web
+    name: advanced-income-bot # আপনার সার্ভিসের নাম
+    env: docker
+    repo: https://github.com/mdnhbn/Advanced-Income-Bot # আপনার GitHub রিপোজিটরির লিঙ্ক
+    region: singapore
+    plan: free
+    healthCheckPath: /public # সার্ভার চালু আছে কিনা তা চেক করার জন্য
+    dockerContext: .
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: BOT_TOKEN
+        fromService:
+          type: secret
+          name: bot-credentials
+          key: BOT_TOKEN
+      - key: ADMIN_ID
+        fromService:
+          type: secret
+          name: bot-credentials
+          key: ADMIN_ID
+      - key: DB_HOST
+        fromService:
+          type: postgres
+          name: incomebot-db # আপনার ডাটাবেসের নাম
+          property: host
+      - key: DB_USER
+        fromService:
+          type: postgres
+          name: incomebot-db # আপনার ডাটাবেসের নাম
+          property: user
+      - key: DB_PASS
+        fromService:
+          type: postgres
+          name: incomebot-db # আপনার ডাটাবেসের নাম
+          property: password
+      - key: DB_NAME
+        fromService:
+          type: postgres
+          name: incomebot-db # আপনার ডাটাবেসের নাম
+          property: database
+    
+  # PostgreSQL Database
+  - type: postgres
+    name: incomebot-db # আপনার ডাটাবেসের নাম
+    region: singapore
+    plan: free
+
+secrets:
+  - key: BOT_TOKEN
+    value: <YOUR_BOT_TOKEN_HERE> # এখানে আপনার বট টোকেন বসান
+  - key: ADMIN_ID
+    value: <YOUR_ADMIN_ID_HERE> # এখানে আপনার অ্যাডমিন আইডি বসান
