@@ -1,0 +1,64 @@
+# =========================================================
+#   Final, Corrected, and Properly Indented render.yaml
+# =========================================================
+
+# Define a group for your secret credentials first.
+# This must be a top-level element.
+secretGroups:
+  - name: bot-credentials
+    secrets:
+      - key: BOT_TOKEN
+        value: 7892128765:AAFBsFuoD_VOrK7FCHJI4QIQ-hfpqJ2snu0
+      - key: ADMIN_ID
+        value: 929198867
+
+# Define the services (your bot and database).
+# This is another top-level element.
+services:
+  # 1. Web Service for the Telegram Bot
+  - type: web
+    name: advanced-income-bot
+    env: docker
+    repo: https://github.com/mdnhbn/Advanced-Income-Bot.git
+    region: singapore
+    plan: free
+    healthCheckPath: /public
+    dockerContext: .
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: BOT_TOKEN
+        fromSecret:
+          name: bot-credentials
+          key: BOT_TOKEN
+      - key: ADMIN_ID
+        fromSecret:
+          name: bot-credentials
+          key: ADMIN_ID
+      - key: BOT_WEBAPP_URL
+        value: https://advanced-income-bot.onrender.com/public/webapp
+      - key: DB_HOST
+        fromService:
+          type: psql
+          name: incomebot-db
+          property: host
+      - key: DB_USER
+        fromService:
+          type: psql
+          name: incomebot-db
+          property: user
+      - key: DB_PASS
+        fromService:
+          type: psql
+          name: incomebot-db
+          property: password
+      - key: DB_NAME
+        fromService:
+          type: psql
+          name: incomebot-db
+          property: database
+
+  # 2. PostgreSQL Database
+  - type: psql
+    name: incomebot-db
+    region: singapore
+    plan: free
