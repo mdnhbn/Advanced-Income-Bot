@@ -42,7 +42,7 @@ services:
           property: database
     
   # PostgreSQL Database
-  - type: postgres
+  - type: psql
     name: incomebot-db # আপনার ডাটাবেসের নাম
     region: singapore
     plan: free
