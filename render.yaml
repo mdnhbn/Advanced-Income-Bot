@@ -49,6 +49,6 @@ services:
 
 secrets:
   - key: BOT_TOKEN
-    value: <YOUR_BOT_TOKEN_HERE> # এখানে আপনার বট টোকেন বসান
+    value: <7892128765:AAFBsFuoD_VOrK7FCHJI4QIQ-hfpqJ2snu0> # এখানে আপনার বট টোকেন বসান
   - key: ADMIN_ID
-    value: <YOUR_ADMIN_ID_HERE> # এখানে আপনার অ্যাডমিন আইডি বসান
+    value: <929198867> # এখানে আপনার অ্যাডমিন আইডি বসান
