@@ -3,7 +3,7 @@ services:
   - type: web
     name: advanced-income-bot # আপনার সার্ভিসের নাম
     env: docker
-    repo: https://github.com/mdnhbn/Advanced-Income-Bot # আপনার GitHub রিপোজিটরির লিঙ্ক
+    repo: https://github.com/mdnhbn/Advanced-Income-Bot.git # আপনার GitHub রিপোজিটরির লিঙ্ক
     region: singapore
     plan: free
     healthCheckPath: /public # সার্ভার চালু আছে কিনা তা চেক করার জন্য
