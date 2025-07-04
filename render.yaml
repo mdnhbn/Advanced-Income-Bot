@@ -32,7 +32,7 @@ services:
           property: user
       - key: DB_PASS
         fromService:
-          type: postgres
+          type: psql
           name: incomebot-db # আপনার ডাটাবেসের নাম
           property: password
       - key: DB_NAME
