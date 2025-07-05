@@ -4,8 +4,7 @@ namespace Core;
 
 use Modules\User;
 use Modules\Admin;
-use Modules\Task;
-use Modules\Wallet;
+// ... other use statements
 
 class Bot {
     private $update;
@@ -14,118 +13,97 @@ class Bot {
     private $text;
     private $data;
     private $is_callback;
+    private $message_id;
 
     public function __construct(array $update) {
         $this->update = $update;
-        $this->parseUpdate();
+        if (!$this->parseUpdate()) {
+            throw new \Exception("Invalid update structure.");
+        }
     }
 
     private function parseUpdate() {
         if (isset($this->update['message'])) {
             $message = $this->update['message'];
-            $this->user_id = $message['from']['id'];
-            $this->chat_id = $message['chat']['id'];
+            $this->user_id = $message['from']['id'] ?? null;
+            $this->chat_id = $message['chat']['id'] ?? null;
+            $this->message_id = $message['message_id'] ?? null;
             $this->text = $message['text'] ?? '';
             $this->is_callback = false;
         } elseif (isset($this->update['callback_query'])) {
             $callback = $this->update['callback_query'];
-            $this->user_id = $callback['from']['id'];
-            $this->chat_id = $callback['message']['chat']['id'];
-            $this->data = $callback['data'];
+            $this->user_id = $callback['from']['id'] ?? null;
+            $this->chat_id = $callback['message']['chat']['id'] ?? null;
+            $this->message_id = $callback['message']['message_id'] ?? null;
+            $this->data = $callback['data'] ?? '';
             $this->text = '';
             $this->is_callback = true;
+        } else {
+            return false; // Not a message or callback we can handle
         }
+        return $this->user_id && $this->chat_id;
     }
 
     public function run() {
-        if (!$this->user_id) return;
-
-        // Initialize user module to handle registration and language
-        $userModule = new User($this->user_id, $this->chat_id);
-        $userModule->initialize();
-        Language::setLanguage($userModule->getLanguage());
-
-        // Check for maintenance mode (except for admin)
-        // This setting would be fetched from the database, managed by Admin module
-        // For now, let's assume it's a function in the Admin module
-        if (Admin::isMaintenanceActive() && $this->user_id != ADMIN_ID) {
-            $this->sendMessage(Language::get('maintenance_message'));
+        // Basic check to prevent processing loops
+        if (empty($this->user_id)) {
+            error_log("No user_id found in update.");
             return;
         }
 
-        // Route commands and callbacks
-        $this->routeRequest();
-    }
-
-    private function routeRequest() {
+        // Initialize User Module
         $userModule = new User($this->user_id, $this->chat_id);
-        $taskModule = new Task($this->user_id);
-        $walletModule = new Wallet($this->user_id);
+        $is_new_user = $userModule->initialize();
+        Language::setLanguage($userModule->getLanguage());
 
-        if ($this->is_callback) {
-            // Handle callback data routing
+        // Handle text commands
+        if (!$this->is_callback) {
+            if ($this->text === '/start') {
+                $userModule->handleStart();
+            } else if ($this->text === '/admin' && $this->user_id == ADMIN_ID) {
+                Admin::showPanel($this->user_id);
+            } else {
+                // Default response for unknown text
+                 $this->sendMessage(Language::get('unknown_command'));
+            }
+        } 
+        // Handle callback queries
+        else {
+            $this->answerCallbackQuery(); // Acknowledge the button press
             $parts = explode('_', $this->data);
             $action = $parts[0];
-
-            switch ($action) {
-                case 'lang':
-                    $userModule->setLanguage($parts[1]);
-                    break;
-                case 'task':
-                    $taskModule->handleCallback($this->data);
-                    break;
-                case 'wallet':
-                    $walletModule->handleCallback($this->data);
-                    break;
-                case 'admin':
-                    Admin::handleCallback($this->user_id, $this->data);
-                    break;
-                default:
-                    $this->sendMessage(Language::get('main_menu_text'), $this->getMainMenu());
+            
+            if ($action === 'lang') {
+                $userModule->setLanguage($parts[1]);
+                $userModule->handleStart(); // Show main menu after language change
             }
-        } else {
-            // Handle text command routing
-            switch ($this->text) {
-                case '/start':
-                    $userModule->handleStart();
-                    break;
-                case '/admin':
-                    Admin::showPanel($this->user_id);
-                    break;
-                default:
-                    // Could be a reply to a bot message (e.g., entering amount)
-                    // We need a state machine for this, which we can implement later.
-                    $this->sendMessage(Language::get('unknown_command'));
-            }
+            // Add other callback routing here
         }
     }
-
+    
+    // Send a message to the user
     private function sendMessage($text, $keyboard = null) {
-        $params = [
-            'chat_id' => $this->chat_id,
-            'text' => $text,
-            'parse_mode' => 'HTML',
-        ];
+        $params = ['chat_id' => $this->chat_id, 'text' => $text, 'parse_mode' => 'HTML'];
         if ($keyboard) {
             $params['reply_markup'] = Keyboard::create($keyboard);
         }
         $this->apiRequest('sendMessage', $params);
     }
-
-    private function getMainMenu() {
-        return [
-            [['text' => Language::get('button_earn'), 'callback_data' => 'task_menu']],
-            [['text' => Language::get('button_wallet'), 'callback_data' => 'wallet_menu']],
-            [['text' => Language::get('button_ads'), 'callback_data' => 'ads_menu']],
-            [['text' => Language::get('button_profile'), 'callback_data' => 'user_profile']],
-        ];
+    
+    // Acknowledge a callback query to stop the loading icon on the button
+    private function answerCallbackQuery() {
+        $this->apiRequest('answerCallbackQuery', ['callback_query_id' => $this->update['callback_query']['id']]);
     }
     
     private function apiRequest($method, $parameters) {
         $url = API_URL . $method;
-        if (!empty($parameters)) {
-            $url .= "?" . http_build_query($parameters);
-        }
-        return file_get_contents($url);
+        $ch = curl_init();
+        curl_setopt($ch, CURLOPT_URL, $url);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($parameters));
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        $result = curl_exec($ch);
+        curl_close($ch);
+        return json_decode($result, true);
     }
 }
